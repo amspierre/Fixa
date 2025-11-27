@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sistema de Atendimentos</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{--sidebar-width:280px;--primary-color:#2563eb}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto;background:#f8f9fa}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-width);background:#fff;padding:2rem;border-right:1px solid #e5e7eb;z-index:1000}
+.sidebar-brand h4{color:var(--primary-color);font-weight:600;margin:0}
+.sidebar-menu{list-style:none;padding:0;margin:0}
+.sidebar-menu li{margin-bottom:.5rem}
+.sidebar-menu a{display:flex;align-items:center;padding:.75rem 1.5rem;color:#6b7280;text-decoration:none;transition:.15s}
+.sidebar-menu a:hover,.sidebar-menu a.active{background:#f3f4f6;color:var(--primary-color)}
+.main-content{margin-left:var(--sidebar-width);padding:2rem}
+.section{display:none}.section.active{display:block}
+.stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;margin-bottom:1rem;font-size:1.25rem}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.yellow{background:#fef3c7;color:#d97706}
+.stat-icon.green{background:#d1fae5;color:#059669}
+.stat-icon.red{background:#fee2e2;color:#dc2626}
+.table-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px}
+.small-muted{font-size:.85rem;color:#6b7280}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-brand mb-4"><h4>Sistema de<br>Atendimentos</h4></div>
+  <ul class="sidebar-menu">
+    <li><a href="#" id="menu-dashboard" class="active" onclick="showSection('dashboard')"><i class="fas fa-home me-2"></i>Dashboard</a></li>
+    <li><a href="#" id="menu-atendimentos" onclick="showSection('atendimentos')"><i class="far fa-calendar me-2"></i>Atendimentos</a></li>
+    <li><a href="#" id="menu-novoAtendimento" onclick="showSection('novoAtendimento')"><i class="fas fa-plus-circle me-2"></i>Novo Atendimento</a></li>
+    <li><a href="#" id="menu-usuarios" onclick="showSection('usuarios')"><i class="fas fa-users me-2"></i>Usuários</a></li>
+    <li><a href="#" id="menu-relatorios" onclick="showSection('relatorios')"><i class="fas fa-chart-bar me-2"></i>Relatórios</a></li>
+    <li><a href="#" id="logoutBtn" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
+  </ul>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main-content">
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="section active">
+    <h2 class="fw-semibold mb-2">Dashboard</h2>
+    <p class="small-muted">Resumo geral</p>
+
+    <div class="d-grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem">
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div><div class="small-muted">Total de Atendimentos</div><div id="kpi-total" class="h3 mb-0">0</div></div>
+      <div class="stat-card"><div class="stat-icon yellow"><i class="far fa-clock"></i></div><div class="small-muted">Em andamento</div><div id="kpi-andamento" class="h3 mb-0">0</div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div class="small-muted">Concluídos</div><div id="kpi-concluidos" class="h3 mb-0">0</div></div>
+      <div class="stat-card"><div class="stat-icon red"><i class="fas fa-exclamation-circle"></i></div><div class="small-muted">Urgentes</div><div id="kpi-urgentes" class="h3 mb-0">0</div></div>
+    </div>
+
+    <div class="table-card mt-4 p-4"><h5 class="mb-3">Gráfico de Atendimentos</h5><canvas id="graficoAtendimentos" height="120"></canvas></div>
+  </div>
+
+  <!-- ATENDIMENTOS -->
+  <div id="atendimentos" class="section">
+    <div class="d-flex justify-content-between mb-3">
+      <h2 class="fw-semibold">Atendimentos</h2>
+      <button class="btn btn-primary" onclick="showSection('novoAtendimento')"><i class="fas fa-plus me-2"></i>Novo Atendimento</button>
+    </div>
+
+    <div class="table-card">
+      <div class="p-3 border-bottom"><h5 class="m-0">Lista de Atendimentos</h5></div>
+      <div class="table-responsive">
+        <table class="table m-0 align-middle">
+          <thead>
+            <tr><th>#</th><th>Cliente</th><th>Telefone</th><th>E-mail</th><th>Assunto</th><th>Status</th><th>Prioridade</th><th>Duração</th><th>Arquivo</th><th>Data</th><th>Ações</th></tr>
+          </thead>
+          <tbody id="tabela-atendimentos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOVO ATENDIMENTO -->
+  <div id="novoAtendimento" class="section">
+    <h2 class="fw-semibold mb-3">Novo Atendimento</h2>
+
+    <div class="table-card p-4">
+      <form id="formNovoAtendimento" enctype="multipart/form-data">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Nome do cliente *</label><input name="clienteNome" class="form-control" required></div>
+          <div class="col-md-3"><label class="form-label">Telefone</label><input name="clienteTelefone" class="form-control"></div>
+          <div class="col-md-3"><label class="form-label">E-mail</label><input name="clienteEmail" type="email" class="form-control"></div>
+          <div class="col-12"><label class="form-label">Assunto *</label><input name="assunto" class="form-control" required></div>
+          <div class="col-12"><label class="form-label">Descrição</label><textarea name="descricao" rows="3" class="form-control"></textarea></div>
+          <div class="col-md-4"><label class="form-label">Status *</label><select name="status" class="form-select"><option>Em andamento</option><option>Aguardando</option><option>Concluído</option></select></div>
+          <div class="col-md-4"><label class="form-label">Prioridade *</label><select name="prioridade" class="form-select"><option>Normal</option><option>Alta</option><option>Urgente</option></select></div>
+          <div class="col-md-4"><label class="form-label">Duração total *</label><input name="duracaoTotal" class="form-control" required></div>
+          <div class="col-12"><label class="form-label">Arquivo (chat WhatsApp)</label><input type="file" name="arquivo" class="form-control"></div>
+
+          <div class="col-12 text-end">
+            <button class="btn btn-secondary me-2" type="button" onclick="formReset()">Limpar</button>
+            <button class="btn btn-primary" type="submit"><i class="fas fa-save me-2"></i>Salvar</button>
+          </div>
+        </div>
+        <div id="msgNovoAtendimento" class="mt-3"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- USUÁRIOS -->
+  <div id="usuarios" class="section">
+    <div class="d-flex justify-content-between mb-4">
+      <h2 class="fw-semibold">Usuários</h2>
+      <button class="btn btn-primary" onclick="abrirModalNovoUsuario()">Novo Usuário</button>
+    </div>
+
+    <div class="table-card p-3">
+      <div id="usuariosList">Carregando...</div>
+    </div>
+  </div>
+
+  <!-- RELATÓRIOS -->
+  <div id="relatorios" class="section">
+    <h2 class="fw-semibold mb-3">Relatórios</h2>
+    <div class="table-card p-4"><canvas id="graficoRelatorio"></canvas></div>
+  </div>
+
+</div>
+
+<!-- MODAL NOVO USUÁRIO -->
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Criar Usuário</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+
+    <div class="modal-body">
+      <form id="formNovoUsuario">
+        <div class="mb-2"><label class="form-label">Nome *</label><input name="nome" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Cargo</label><input name="cargo" class="form-control"></div>
+        <div class="mb-2"><label class="form-label">Departamento</label><input name="departamento" class="form-control"></div>
+        <div class="mb-2"><label class="form-label">E-mail *</label><input name="email" type="email" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Senha *</label><input name="senha" type="password" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Role</label>
+          <select name="role" class="form-select">
+            <option value="attendant">Atendente</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div id="msgNovoUser"></div>
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+      <button class="btn btn-primary" id="salvarUsuarioBtn">Salvar</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- SCRIPT PRINCIPAL -->
+<script type="module">
+
+/* ============================================
+   CONFIG
+============================================ */
+const API = "http://localhost:3000";
+const token = localStorage.getItem("token");
+
+if(!token && !location.pathname.endsWith("login.html")){
+  location.href = "login.html";
+}
+
+let me = null;
+
+/* Fetch usuário atual */
+async function fetchMe(){
+  const r = await fetch(API+"/me",{ headers:{Authorization:"Bearer "+token}});
+  if(!r.ok){ localStorage.clear(); location.href="login.html"; return; }
+  me = await r.json();
+}
+await fetchMe();
+
+/* ============================================
+   FUNÇÕES GLOBAIS DE NAVEGAÇÃO
+============================================ */
+function showSection(id){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll(".sidebar-menu a").forEach(a=>a.classList.remove("active"));
+  const map = { dashboard:"menu-dashboard", atendimentos:"menu-atendimentos", novoAtendimento:"menu-novoAtendimento", usuarios:"menu-usuarios", relatorios:"menu-relatorios" };
+  document.getElementById(map[id]).classList.add("active");
+}
+
+/* ============================================
+   ROLE UI
+============================================ */
+function applyRoleUI(){
+  if(me.role !== "admin"){
+    document.getElementById("menu-usuarios").style.display = "none";
+  }
+
+  const box = document.createElement("div");
+  box.className = "mt-4 small-muted";
+  box.innerHTML = `<strong>${me.nome}</strong><br>${me.cargo||""}`;
+  document.querySelector(".sidebar").appendChild(box);
+}
+applyRoleUI();
+
+/* ============================================
+   ABRIR MODAL DE NOVO USUÁRIO  (CORRIGIDO!)
+============================================ */
+function abrirModalNovoUsuario(){
+  const modal = new bootstrap.Modal(document.getElementById("modalUsuario"));
+  modal.show();
+}
+
+/* ============================================
+   DASHBOARD
+============================================ */
+let graf1;
+
+async function carregarDashboard(){
+  const r = await fetch(API+"/dashboard",{ headers:{Authorization:"Bearer "+token}});
+  if(!r.ok) return;
+
+  const data = await r.json();
+
+  document.getElementById("kpi-total").innerText = data.total;
+  document.getElementById("kpi-andamento").innerText = data.andamento;
+  document.getElementById("kpi-concluidos").innerText = data.concluidos;
+  document.getElementById("kpi-urgentes").innerText = data.urgentes;
+
+  const ctx = document.getElementById("graficoAtendimentos");
+  if(graf1) graf1.destroy();
+
+  graf1 = new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:data.grafico.meses,
+      datasets:[{
+        label:"Atendimentos",
+        data:data.grafico.valores,
+        borderColor:"#2563eb",
+        backgroundColor:"rgba(37,99,235,0.12)",
+        borderWidth:3,
+        tension:.3,
+        fill:true
+      }]
+    },
+    options:{ responsive:true, plugins:{legend:{display:false}} }
+  });
+}
+
+/* ============================================
+   LISTAR ATENDIMENTOS
+============================================ */
+async function carregarAtendimentos(){
+  const r = await fetch(API+"/atendimentos",{ headers:{Authorization:"Bearer "+token}});
+  const lista = await r.json();
+
+  const tbody = document.getElementById("tabela-atendimentos");
+  tbody.innerHTML = "";
+
+  lista.forEach(a=>{
+    const arquivoHtml = a.arquivo ? `<a href="${API}${a.arquivo}" target="_blank" class="btn btn-sm btn-outline-primary">Ver</a>` : "";
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${a.id}</td>
+        <td>${a.clienteNome}</td>
+        <td>${a.clienteTelefone||""}</td>
+        <td>${a.clienteEmail||""}</td>
+        <td>${a.assunto}</td>
+        <td><span class="badge ${statusBadgeClass(a.status)}">${a.status}</span></td>
+        <td>${a.prioridade}</td>
+        <td>${a.duracaoTotal||""}</td>
+        <td>${arquivoHtml}</td>
+        <td>${a.dataCriacao}</td>
+        <td><button class="btn btn-sm btn-outline-secondary" onclick="abrirEditar(${a.id})"><i class="fas fa-edit"></i></button></td>
+      </tr>`;
+  });
+}
+
+/* ============================================
+   CRIAR ATENDIMENTO
+============================================ */
+document.getElementById("formNovoAtendimento").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+
+  const r = await fetch(API+"/atendimentos",{ method:"POST", headers:{Authorization:"Bearer "+token}, body:fd });
+  const data = await r.json();
+
+  if(!r.ok){
+    document.getElementById("msgNovoAtendimento").innerHTML = `<div class="alert alert-danger">${data.erro}</div>`;
+    return;
+  }
+
+  document.getElementById("msgNovoAtendimento").innerHTML = `<div class="alert alert-success">Atendimento criado!</div>`;
+  e.target.reset();
+
+  await carregarAtendimentos();
+  await carregarDashboard();
+  showSection("atendimentos");
+});
+
+function formReset(){
+  document.getElementById("formNovoAtendimento").reset();
+}
+
+/* ============================================
+   EDITAR ATENDIMENTO
+============================================ */
+async function abrirEditar(id){
+  const r = await fetch(API+"/atendimentos/"+id,{ headers:{Authorization:"Bearer "+token}});
+  if(!r.ok){ alert("Não permitido"); return; }
+
+  const a = await r.json();
+
+  const novoStatus = prompt("Status:", a.status);
+  if(novoStatus===null) return;
+
+  const novaDur = prompt("Duração total:", a.duracaoTotal||"");
+  if(novaDur===null) return;
+
+  const novaDesc = prompt("Descrição:", a.descricao||"");
+  if(novaDesc===null) return;
+
+  await fetch(API+"/atendimentos/"+id,{
+    method:"PATCH",
+    headers:{ "Content-Type":"application/json", Authorization:"Bearer "+token},
+    body: JSON.stringify({ status:novoStatus, duracaoTotal:novaDur, descricao:novaDesc })
+  });
+
+  carregarAtendimentos();
+  carregarDashboard();
+  alert("Atualizado!");
+}
+
+/* ============================================
+   LISTAR USUÁRIOS
+============================================ */
+async function listarUsuarios(){
+  const r = await fetch(API+"/usuarios",{ headers:{Authorization:"Bearer "+token}});
+  const users = await r.json();
+
+  let html = `<table class="table"><thead><tr>
+      <th>#</th><th>Nome</th><th>E-mail</th><th>Cargo</th>
+      <th>Depto</th><th>Role</th><th>Ativo</th>
+  </tr></thead><tbody>`;
+
+  users.forEach(u=>{
+    html += `<tr>
+      <td>${u.id}</td>
+      <td>${u.nome}</td>
+      <td>${u.email}</td>
+      <td>${u.cargo||""}</td>
+      <td>${u.departamento||""}</td>
+      <td>${u.role}</td>
+      <td>${u.ativo?"Sim":"Não"}</td>
+    </tr>`;
+  });
+
+  html += "</tbody></table>";
+
+  document.getElementById("usuariosList").innerHTML = html;
+}
+
+/* ============================================
+   SALVAR NOVO USUÁRIO
+============================================ */
+document.getElementById("salvarUsuarioBtn").addEventListener("click", async ()=>{
+  const form = document.getElementById("formNovoUsuario");
+  const fd = new FormData(form);
+
+  const payload = Object.fromEntries(fd.entries());
+
+  const r = await fetch(API+"/usuarios",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json", Authorization:"Bearer "+token },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await r.json();
+
+  if(!r.ok){
+    document.getElementById("msgNovoUser").innerHTML = `<div class="alert alert-danger">${data.erro}</div>`;
+    return;
+  }
+
+  document.getElementById("msgNovoUser").innerHTML = `<div class="alert alert-success">Usuário criado!</div>`;
+  form.reset();
+
+  listarUsuarios();
+
+  const modal = bootstrap.Modal.getInstance(document.getElementById("modalUsuario"));
+  modal.hide();
+});
+
+/* ============================================
+   RELATÓRIOS
+============================================ */
+let graf2;
+
+async function carregarRelatorio(){
+  const r = await fetch(API+"/relatorios/meses",{ headers:{Authorization:"Bearer "+token}});
+  const data = await r.json();
+
+  const ctx = document.getElementById("graficoRelatorio");
+  if(graf2) graf2.destroy();
+
+  graf2 = new Chart(ctx,{
+    type:"bar",
+    data:{ labels:data.meses, datasets:[{ data:data.valores, backgroundColor:"#2563eb", borderRadius:8 }] },
+    options:{ responsive:true, plugins:{legend:{display:false}} }
+  });
+}
+
+/* ============================================
+   AUX
+============================================ */
+function statusBadgeClass(s){
+  if(!s) return "bg-secondary";
+  s = s.toLowerCase();
+  if(s.includes("andamento")) return "bg-warning text-dark";
+  if(s.includes("aguard")) return "bg-info text-dark";
+  if(s.includes("conclu")) return "bg-success";
+  return "bg-secondary";
+}
+
+/* ============================================
+   LOGOUT
+============================================ */
+function logout(){
+  localStorage.clear();
+  location.href = "login.html";
+}
+
+/* ============================================
+   INIT
+============================================ */
+async function initAll(){
+  await carregarDashboard();
+  await carregarAtendimentos();
+  await carregarRelatorio();
+  if(me.role==="admin") listarUsuarios();
+}
+initAll();
+
+/* ============================================
+   EXPOSE (IMPORTANTE!)
+============================================ */
+window.logout = logout;
+window.showSection = showSection;
+window.formReset = formReset;
+window.abrirEditar = abrirEditar;
+window.abrirModalNovoUsuario = abrirModalNovoUsuario;
+
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

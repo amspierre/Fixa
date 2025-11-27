@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fixa — Login</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body{display:flex;align-items:center;justify-content:center;height:100vh;background:#f3f4f6;font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto}
+    .card{width:420px;border-radius:12px}
+  </style>
+</head>
+<body>
+<div class="card shadow-sm p-4">
+  <h3 class="mb-3 text-center text-primary">fixa</h3>
+  <p class="text-center text-muted mb-3">Entre na sua conta</p>
+  <div id="alert"></div>
+  <form id="loginForm">
+    <div class="mb-3"><label class="form-label">E-mail</label><input id="email" class="form-control" type="email" required></div>
+    <div class="mb-3"><label class="form-label">Senha</label><input id="senha" class="form-control" type="password" required></div>
+    <div class="d-grid"><button class="btn btn-primary" type="submit">Entrar</button></div>
+  </form>
+  <div class="text-center text-muted mt-3 small">Usuários: admin@fixa.com / admin123 (seed)</div>
+</div>
+
+<script>
+const API = "http://localhost:3000";
+const alertBox = document.getElementById("alert");
+document.getElementById("loginForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  alertBox.innerHTML = "";
+  const email = document.getElementById("email").value.trim();
+  const senha = document.getElementById("senha").value;
+  try{
+    const r = await fetch(API + "/auth/login", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ email, senha })});
+    const data = await r.json();
+    if(!r.ok){ alertBox.innerHTML = `<div class="alert alert-danger">${data.erro || 'Erro'}</div>`; return; }
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+    // redireciona para app
+    window.location.href = "index.html";
+  }catch(err){
+    alertBox.innerHTML = `<div class="alert alert-danger">Erro de conexão</div>`;
+  }
+});
+</script>
+</body>
+</html>
